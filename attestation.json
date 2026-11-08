@@ -1,9 +1,9 @@
 {
   "pluginId": "neodex.aquarium",
   "repo": "NDesumeur/neodex-plugin-aquarium",
-  "version": "1.2.2",
-  "sha256": "d3a04b7582d6ad5fd52c91b5b71c2f6cdac9bd14268b8d8ecbdb1e26775ffd53",
-  "approvedAt": "2026-11-08T12:10:45.926Z",
+  "version": "1.2.3",
+  "sha256": "f64f7c7a7e57d554f0a664a22a74ad89c6c4855b77770d4991b9632cb99373c4",
+  "approvedAt": "2026-11-08T14:45:26.810Z",
   "neobase": ">=4.0.0",
-  "signature": "iKNFEw2gHmFMxcFI9P6m4V5kKGMwK9J4ocIKVD61lAKRk49YP3nyBUYpc78eE258fkAPDR9WT8IULuDK7V4oCQ=="
+  "signature": "DcQghArPFWPbdFayeAOYP9ZjC+8KtlaYvINWRzU3vKhoOmiaTyNpKHJlvhiFDDcYIeS1yxi/QpoM/NxqW00MDQ=="
 }
