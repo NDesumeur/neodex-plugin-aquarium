@@ -3,7 +3,7 @@
   "name": "Aquarium",
   "version": "1.2.1",
   "author": "NDesumeur",
-  "description": "Garde en vie les poissons attrapés à la Pêche : bassins, nourriture, décors et visiteurs qui rapportent des pièces.",
+  "description": "Jeu de gestion qui prolonge la Pêche : chaque poisson attrapé arrive vivant dans ton vivier. Installe-le dans un bassin de la bonne eau (douce, mer, tropicale, polaire, abysses), nourris-le et nettoie l'eau, même pendant ton absence. Les poissons heureux attirent des visiteurs dont les pièces paient bassins, filtres, distributeurs et décors.",
   "icon": "icon.png",
   "entry": "index.js",
   "view": "aquarium",
