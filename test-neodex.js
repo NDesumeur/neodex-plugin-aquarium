@@ -41,5 +41,10 @@ module.exports = async ({ pj, sleep }) => {
     await sleep(3000); await shot(w);
   }
   const err = await pj(`document.getElementById('aqCanvas').width`); if (err !== 480) throw new Error('taille du jeu');
+  { // la zone de jeu tient dans la fenêtre, quelle que soit sa taille
+    const L = await pj(`(() => { const c = [...document.querySelectorAll('.gameBox canvas')].filter(c => c.offsetWidth).sort((a, b) => b.offsetWidth - a.offsetWidth)[0], r = c.getBoundingClientRect(); let s = 0; for (let e = c.parentElement; e; e = e.parentElement) s += e.scrollTop; return { top: Math.round(r.top + s), bottom: Math.round(r.bottom + s), h: Math.round(r.height), w: Math.round(r.width), wh: innerHeight, ww: innerWidth, sw: document.documentElement.scrollWidth }; })()`);
+    if (process.env.NEO_FIT_LOG) console.log('FIT', JSON.stringify(L));
+    if (L.bottom > L.wh + 1 || L.sw > L.ww + 1) throw new Error('la zone de jeu dépasse la fenêtre : ' + JSON.stringify(L));
+  }
   return 'carnet ' + dex0 + ' → ' + dex1 + ' · décor ' + moved.join(' → ') + ' · pourboire +' + tip[1] + ' · ' + JSON.stringify(life) + ' · défi +' + claimed + ' · ' + seeded;
 };
