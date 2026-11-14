@@ -1,7 +1,7 @@
 // Aquarium : ton appli d'origine (HTML et code inchangés), livrée en plugin.
 // Ses données sont dans le dossier du plugin, que NeoDex sauvegarde (synchro cloud et sauvegardes) ; à la première ouverture elle reprend ce que tu avais dans NeoDex.
 // Elle tourne dans le bac à sable de NeoDex, avec ses outils d'interface (ctx.host) et seulement les autorisations de son plugin.json.
-const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\"label\">Aquarium</span><span class=\"hint\" id=\"aqInfo\"></span><div class=\"agNav\"><select class=\"f gSel\" id=\"aqTank\" title=\"Bassin\"></select><button class=\"btn px\" id=\"aqFeed\">NOURRIR</button><button class=\"btn px\" id=\"aqClean\">NETTOYER</button><button class=\"btn main px\" id=\"aqCash\" title=\"Les pièces des visiteurs vont dans ta bourse de Pêche\">ENCAISSER</button></div></div>\n      <div class=\"gameBox g169\"><canvas id=\"aqCanvas\" width=\"384\" height=\"216\"></canvas></div>\n      <div class=\"aqPanel\" id=\"aqPanel\"></div>\n      <div class=\"hint\">Chaque poisson pêché dans Pêche arrive vivant dans le vivier (et ta première visite y met un poisson de chaque espèce déjà dans ta collection). Mets-les dans un bassin de leur eau : douce (étang, rivière, lac), mer, tropicale, polaire ou abysses ; les gros poissons veulent un grand bassin. Ils ont faim et l'eau se salit, même quand NeoDex est fermé : nourris, nettoie, ou installe un distributeur et un filtre. Les poissons heureux attirent des visiteurs : encaisse leurs pièces, elles vont dans ta bourse de Pêche, qui paie aussi les bassins, les améliorations et les décors. Clic sur un poisson : son nom. Sauvegardé et synchronisé.</div>\n    </div>";
+const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\"label\">Aquarium</span><span class=\"hint\" id=\"aqInfo\"></span><div class=\"agNav\"><select class=\"f gSel\" id=\"aqTank\" title=\"Bassin\"></select><button class=\"btn px\" id=\"aqFeed\">NOURRIR</button><button class=\"btn px\" id=\"aqClean\">NETTOYER</button><button class=\"btn main px\" id=\"aqCash\" title=\"Les pièces des visiteurs vont dans ta bourse de Pêche\">ENCAISSER</button></div></div>\n      <div class=\"gameBox g169\"><canvas id=\"aqCanvas\" width=\"480\" height=\"270\"></canvas></div>\n      <div class=\"aqPanel\" id=\"aqPanel\"></div>\n      <div class=\"hint\">Chaque poisson pêché dans Pêche arrive vivant dans le vivier : mets-le dans un bassin de son eau. Nourris, nettoie et décore : les poissons heureux grandissent, ont des petits et attirent des visiteurs. Clique sur les pourboires tombés par terre, et sur le bocal pour encaisser. Fais glisser les décors sur le sable. Sauvegardé et synchronisé.</div>\n    </div>";
 /*CSS-MOVED*/ const CSS = `.gameBox{display:grid;place-items:center;padding:10px;background:#05010b;box-shadow:0 0 0 3px var(--line2)}
 .aqPanel{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;align-items:start}
 .aqCol{max-height:440px;overflow:auto;gap:6px}
@@ -13,8 +13,14 @@ const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\
 .aqShop{text-align:left;white-space:normal;height:auto;line-height:1.3;padding:6px 10px}
 .gameBox canvas{width:min(100%,1152px);aspect-ratio:384/144;image-rendering:pixelated;cursor:var(--cp,pointer)}
 .gameBox.tall canvas{width:auto;height:min(720px,72vh);aspect-ratio:240/320}
+.aqGoal{display:grid;grid-template-columns:1fr auto;gap:4px 8px;align-items:center;padding:4px 0}
+.aqBar{grid-column:1;height:6px;background:var(--line2)}
+.aqBar i{display:block;height:100%;background:#ffd84a}
+.aqGoal .btn{grid-row:1/3;grid-column:2}
+.aqDex{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:4px}
+.aqDex img{width:100%;image-rendering:pixelated}
 .gSel{width:auto;font-size:14px;padding:6px 10px;margin-right:8px}
-.gameBox.g169 canvas{aspect-ratio:384/216;width:min(100%,calc((100vh - 250px) * 1.777))}
+.gameBox.g169 canvas{aspect-ratio:480/270;width:min(100%,calc((100vh - 250px) * 1.777))}
 `;  // le style de ce plugin (il utilise les variables du thème de NeoDex)
 export default async function (ctx) {
   const view = ctx.view;
@@ -403,161 +409,393 @@ const fmtAway = s => s < 3600 ? Math.round(s / 60) + ' min' : s < 86400 ? Math.f
 
 /* ---------- jeu "Aquarium": keep alive the fish caught in Pêche. Every catch also goes, alive, to the holding pool (the first visit brings one
    of each species already in the collection). Tanks of 5 waters (fresh, sea, tropical, polar, abyss) hold the fish of their places; they get
-   hungry and the water gets dirty, also while NeoDex is closed. Happy fish bring visitors: the ticket money goes to the Pêche purse, which
-   also pays for the tanks, filters, feeders and decorations. Saved in games.aquarium (synced). ---------- */
-const AQA = {W: 384, H: 216, SAND: 196,
+   hungry and the water gets dirty, also while NeoDex is closed. Fed fish grow, pairs of adults in a happy tank have young (sometimes of a rare colour).
+   Visitors walk past the glass, stop in front of the finest fish and leave tips; the ticket money goes to the Pêche purse, which also pays for
+   the tanks, filters, feeders and decorations (dragged anywhere on the sand). A species log per water and challenges give rewards; each tank
+   earns up to 3 stars. Saved in games.aquarium (synced). ---------- */
+const AQA = {W: 480, H: 270, TOP: 18, GL: 8, GR: 472, SAND: 204, GB: 236,
   waters: {douce: ['Eau douce', 'ERL', 'E'], mer: ['Mer', 'C', 'C'], tropical: ['Tropical', 'T', 'T'], polaire: ['Polaire', 'B', 'B'], abysses: ['Abysses', 'A', 'A']},  // name, places, colours of
   sizes: [['Petit', 6, 0], ['Moyen', 10, 900], ['Grand', 16, 3500]],  // name, places, price to get to it
-  decor: {plante: ['Plante', 120], rocher: ['Rocher', 150], corail: ['Corail', 250], chateau: ['Château', 400], coffre: ['Coffre', 500], epave: ['Épave', 900]},
+  decor: {plante: ['Plante', 120], rocher: ['Rocher', 150], corail: ['Corail', 250], amphore: ['Amphore', 300], chateau: ['Château', 400], arche: ['Arche de pierre', 450], coffre: ['Coffre', 500], bulleur: ['Bulleur', 650], epave: ['Épave', 900],
+    souche: ['Vieille souche', 0, 'douce'], phare: ['Petit phare', 0, 'mer'], tiki: ['Statue tiki', 0, 'tropical'], igloo: ['Igloo', 0, 'polaire'], cheminee: ['Cheminée des abysses', 0, 'abysses']},  // the last ones: won with the log (half of a water)
+  mult: {douce: 1, mer: 2, tropical: 3, polaire: 4, abysses: 6},
+  sandCol: {douce: '#8c7a52', mer: '#d6c48c', tropical: '#efe0b4', polaire: '#a8b8c8', abysses: '#2c2840'},
+  maxDecor: 6,
   tankPrice: n => [0, 600, 2500, 7000, 16000, 35000][n] ?? 35000 * 2 ** (n - 5),
 };
-const aqSave = () => gstore('aquarium', {tanks: [{water: 'douce', size: 0, filter: false, feeder: false, decor: [], food: 100, dirt: 0, fish: []}], pool: [], cash: 0, last: Date.now(), gift: false, earned: 0, visitors: 0, seq: 1});
+const aqNewTank = water => ({water, size: 0, filter: false, feeder: false, decor: [], food: 100, dirt: 0, fish: []});
+const aqSave = () => gstore('aquarium', {tanks: [aqNewTank('douce')], pool: [], cash: 0, last: Date.now(), gift: false, earned: 0, visitors: 0, seq: 1});
+function aqFix(s) {  // older saves (and the one Pêche creates): decorations get a place on the sand, the new counters appear
+  for (const t of s.tanks) t.decor = t.decor.map((d, i) => typeof d === 'string' ? {k: d, x: AQA.GL + 14 + i * 74} : d).filter(d => AQ_DECOR[d.k]);
+  s.dex ??= {}; s.dexT ??= {}; s.goals ??= {}; s.unlock ??= {}; s.news ??= []; s.births ??= 0; s.tips ??= 0;
+}
 const aqFish = f => FISH[f.id];
 const aqFits = (fish, tank) => [...aqFish(fish).spots].some(p => AQA.waters[tank.water][1].includes(p));
 const aqNeedSize = fish => fish.cm > 120 ? 2 : fish.cm > 60 ? 1 : 0;  // a big fish needs a big tank
+const aqVal = f => fiValue(aqFish(f), f.cm) * (f.v ? 3 : 1);  // a rare colour is worth three times more
+const aqAdult = f => { const sp = aqFish(f); return f.cm >= sp.min + (sp.max - sp.min) * .4; };
+const aqWaterFish = w => FISH.filter(f => [...f.spots].some(p => AQA.waters[w][1].includes(p)));
+const aqDexOf = (s, w) => aqWaterFish(w).filter(f => s.dex[f.id]).length;
 // how happy a fish is, 0-100: fed, clean water, decorations, not crowded
 function aqHappy(t) {
   const crowd = t.fish.length > AQA.sizes[t.size][1] * .8 ? -10 : 0;
   return Math.max(0, Math.min(100, 50 + (t.food > 30 ? 20 : t.food > 0 ? 0 : -35) + (t.dirt < 40 ? 15 : t.dirt < 75 ? 0 : -25) + Math.min(4, t.decor.length) * 5 + crowd));
 }
-// ticket money an hour: what the fish are worth (rarity, size, place), times how happy they are
-const aqIncome = t => t.fish.reduce((a, f) => a + fiValue(aqFish(f), f.cm) * .08, 0) * aqHappy(t) / 100;
-// time passes: hunger, dirt and visitors, hour by hour (also for the time spent away)
-function aqTick(now = Date.now()) {
-  const s = aqSave(); let h = Math.max(0, (now - s.last) / 3.6e6); s.last = now;
+// stars of a tank: happy, well filled, varied, decorated
+function aqStars(t) {
+  const n = t.fish.length, cap = AQA.sizes[t.size][1], joy = aqHappy(t), kinds = new Set(t.fish.map(f => f.id)).size, rare = t.fish.some(f => aqFish(f).rarity >= 3);
+  return joy >= 90 && n >= cap * .75 && kinds >= 4 && rare && t.decor.length >= 3 ? 3 : joy >= 75 && n >= cap * .5 && kinds >= 2 && t.decor.length >= 2 ? 2 : joy >= 55 && n >= 3 ? 1 : 0;
+}
+// ticket money an hour: what the fish are worth (rarity, size, place, colour), times how happy they are, +15 % a star
+const aqIncome = t => t.fish.reduce((a, f) => a + aqVal(f) * .08, 0) * aqHappy(t) / 100 * (1 + .15 * aqStars(t));
+// a species seen in a tank for the first time goes in the log: coins, and at a quarter, half and all of a water, a reward
+function aqDexAdd(s, f) {
+  if (s.dex[f.id]) return 0;
+  const sp = aqFish(f); s.dex[f.id] = 1; let coins = FI_RARITY[sp.rarity][3]; s.news.push('Nouvelle espèce au carnet : ' + sp.name + ' · +' + coins + ' pièces');
+  for (const w of Object.keys(AQA.waters)) {
+    const all = aqWaterFish(w); if (!all.includes(sp)) continue;
+    const k = aqDexOf(s, w) / all.length, tier = k >= 1 ? 3 : k >= .5 ? 2 : k >= .25 ? 1 : 0;
+    while ((s.dexT[w] || 0) < tier) {
+      const n = s.dexT[w] = (s.dexT[w] || 0) + 1, name = AQA.waters[w][0];
+      if (n === 2) { const d = Object.keys(AQA.decor).find(d => AQA.decor[d][2] === w); s.unlock[d] = 1; s.news.push('Carnet ' + name + ' à moitié : décor « ' + AQA.decor[d][0] + ' » gagné !'); }
+      else { const c = (n === 1 ? 300 : 3000) * AQA.mult[w]; coins += c; s.news.push('Carnet ' + name + (n === 1 ? ' au quart' : ' complet') + ' : +' + c + ' pièces'); }
+    }
+  }
+  return coins;
+}
+// time passes: hunger, dirt, growth, young and visitors, hour by hour (also for the time spent away); returns the coins won by the log
+function aqStep(s, hours, r = Math.random) {
+  let h = Math.max(0, hours), coins = 0;
   while (h > 0) {
     const d = Math.min(1, h); h -= d;
     for (const t of s.tanks) {
-      s.cash += aqIncome(t) * d; s.visitors += t.fish.length * d * aqHappy(t) / 25;
+      const joy = aqHappy(t), fed = t.food > 30;
+      s.cash += aqIncome(t) * d; s.visitors += t.fish.length * d * joy / 25;
       if (t.feeder) t.food = Math.max(t.food, 60); else t.food = Math.max(0, t.food - 8 * d);
       t.dirt = Math.min(100, t.dirt + (t.filter ? 1.5 : 5) * d * (.4 + t.fish.length / AQA.sizes[t.size][1]));
+      if (fed) for (const f of t.fish) { const sp = aqFish(f), lim = Math.min(sp.max, [60, 120, 1e9][t.size]); if (f.cm < lim) f.cm = Math.min(lim, f.cm + (sp.max - sp.min) / 480 * d); }  // 20 days from smallest to biggest
+      if (joy >= 70 && t.fish.length < AQA.sizes[t.size][1]) {
+        const n = {}; for (const f of t.fish) if (aqAdult(f)) n[f.id] = (n[f.id] || 0) + 1;
+        const pairs = Object.keys(n).filter(id => n[id] >= 2);
+        if (pairs.length && r() < .02 * d * pairs.length) {
+          const id = +pairs[Math.floor(r() * pairs.length)], baby = {id, cm: FISH[id].min, k: s.seq++, v: r() < .08 ? 1 : 0, born: 1};
+          t.fish.push(baby); s.births++; coins += aqDexAdd(s, baby);
+          s.news.push('Naissance : un petit ' + FISH[id].name + (baby.v ? ' de couleur rare !' : ' dans le bassin ' + AQA.waters[t.water][0].toLowerCase()));
+        }
+      }
     }
   }
+  return coins;
 }
+function aqTick(now = Date.now()) { const s = aqSave(), h = (now - s.last) / 3.6e6; s.last = now; fiSave().money += aqStep(s, h); }
+const aqNews = () => { for (const m of aqSave().news.splice(0, 6)) toast(m); aqSave().news.length = 0; };
 // Pêche: a fish that is landed is also kept alive in the holding pool
 const aqKeep = (id, cm) => { const s = aqSave(); s.pool.push({id, cm, k: s.seq++}); if (s.pool.length > 60) s.pool.shift(); };
+// challenges, in order; three at a time
+const aqMax = (s, fn) => Math.max(0, ...s.tanks.map(fn));
+const aqAll = s => s.tanks.flatMap(t => t.fish);
+const AQ_GOALS = [
+  ['p3', 'Mettre 3 poissons dans un même bassin', s => [aqMax(s, t => t.fish.length), 3], 100],
+  ['dec2', 'Poser 2 décors dans un bassin', s => [aqMax(s, t => t.decor.length), 2], 150],
+  ['joy80', 'Avoir un bassin à 80 de joie', s => [aqMax(s, aqHappy), 80], 200],
+  ['vis100', 'Accueillir 100 visiteurs', s => [Math.floor(s.visitors), 100], 250],
+  ['star1', 'Gagner une étoile pour un bassin', s => [aqMax(s, aqStars), 1], 250],
+  ['tip10', 'Ramasser 10 pourboires', s => [s.tips, 10], 300],
+  ['dex10', 'Avoir 10 espèces au carnet', s => [Object.keys(s.dex).length, 10], 400],
+  ['tank2', 'Ouvrir un deuxième bassin', s => [s.tanks.length, 2], 400],
+  ['star2', 'Un bassin à 2 étoiles', s => [aqMax(s, aqStars), 2], 600],
+  ['birth', 'Une naissance dans un bassin', s => [s.births, 1], 600],
+  ['rare3', 'Trois poissons rares (ou mieux) dans tes bassins', s => [aqAll(s).filter(f => aqFish(f).rarity >= 3).length, 3], 800],
+  ['dex25', 'Avoir 25 espèces au carnet', s => [Object.keys(s.dex).length, 25], 1200],
+  ['earn5k', 'Encaisser 5 000 pièces', s => [Math.floor(s.earned), 5000], 1500],
+  ['star3', 'Un bassin à 3 étoiles', s => [aqMax(s, aqStars), 3], 2000],
+  ['shiny', 'Un poisson de couleur rare', s => [aqAll(s).filter(f => f.v).length, 1], 2500],
+  ['big', 'Un grand bassin plein', s => [s.tanks.some(t => t.size === 2 && t.fish.length >= 16) ? 1 : 0, 1], 3000],
+  ['waters', 'Un bassin de chaque eau', s => [new Set(s.tanks.map(t => t.water)).size, 5], 4000],
+  ['dex60', 'Avoir 60 espèces au carnet', s => [Object.keys(s.dex).length, 60], 6000],
+];
+const aqGoals = s => AQ_GOALS.filter(([id]) => !s.goals[id]).slice(0, 3);
+const aqGoalKey = s => aqGoals(s).map(([id, , fn]) => { const [c, n] = fn(s); return id + (c >= n); }).join();  // the page is rebuilt when a challenge can be claimed
 
 let aq = null;
 const aqTank = () => aqSave().tanks[Math.min(aq?.tank || 0, aqSave().tanks.length - 1)];
 function aqOpen() {
-  const s = aqSave(), away = (Date.now() - s.last) / 1000, c0 = s.cash;
+  const s = aqSave(), away = (Date.now() - s.last) / 1000, c0 = s.cash; aqFix(s);
   if (!s.gift) {  // a first visit: one of each species already caught
     s.gift = true; const fs = fiSave();
     for (const id of Object.keys(fs.dex)) aqKeep(+id, fs.dex[id].best);
   }
   aqTick();
   if (away > 600 && s.cash - c0 >= 1) toast('Pendant ton absence (' + fmtAway(away) + '), les visiteurs ont laissé ' + Math.floor(s.cash - c0) + ' pièces à la caisse');
-  aq ??= {raf: 0, g: $('aqCanvas').getContext('2d'), tick: 0, tank: 0, swim: {}, bubbles: [], flakes: [], sel: null};
+  aqNews();
+  aq ??= {raf: 0, g: $('aqCanvas').getContext('2d'), tick: 0, tank: 0, swim: {}, bubbles: [], flakes: [], parts: [], vis: [], tips: [], pops: [], bg: {}, sel: null, drag: null};
   aq.mode = 'play'; saveGames(); aqUi(); gameLoop(aq, 'neodex:aquarium', aqUpdate, aqDraw);
 }
+const aqTip = () => Math.max(1, Math.round(aqSave().tanks.reduce((a, t) => a + aqIncome(t), 0) / 10));
+function aqSpawn() {  // a visitor comes in, and walks to one of the finest fish
+  const dir = Math.random() < .5 ? 1 : -1, best = [...aqTank().fish].sort((a, b) => aqVal(b) - aqVal(a)).slice(0, 3), f = best[Math.floor(Math.random() * best.length)], sw = f && aq.swim[f.k];
+  aq.vis.push({x: dir > 0 ? -14 : AQA.W + 14, dir, sp: .25 + Math.random() * .25, tx: Math.max(30, Math.min(AQA.W - 70, sw ? sw.x : 40 + Math.random() * 380)), child: Math.random() < .3, look: Math.floor(Math.random() * 4), step: 0, stop: 0, seen: false, heart: 0});
+}
 function aqUpdate() {
-  if (aq.tick % 600 === 0) { aqTick(); aqUi(true); if (aq.tick % 3600 === 0) saveGames(); }
-  if (Math.random() < .08) aq.bubbles.push({x: 20 + Math.random() * (AQA.W - 40), y: AQA.SAND, v: .3 + Math.random() * .4});
-  for (const b of aq.bubbles) b.y -= b.v; aq.bubbles = aq.bubbles.filter(b => b.y > 12);
-  for (const f of aq.flakes) f.y += f.y < AQA.SAND - 4 ? .35 : 0; if (aq.tick % 4 === 0) aq.flakes = aq.flakes.filter(f => ++f.t < 300);
+  if (aq.tick % 600 === 0) { aqTick(); aqNews(); aqUi(true); if (aq.tick % 3600 === 0) saveGames(); }
+  const tank = aqTank(), {W, TOP, SAND, GL, GR} = AQA, joy = aqHappy(tank), stars = aqStars(tank);
+  if (Math.random() < .06) aq.bubbles.push({x: GL + 12 + Math.random() * (GR - GL - 24), y: SAND, v: .3 + Math.random() * .4});
+  for (const d of tank.decor) {
+    if (d.k === 'bulleur' && aq.tick % 9 === 0) aq.bubbles.push({x: d.x + 4 + Math.random() * 3, y: SAND - 4, v: .7 + Math.random() * .5});
+    if (d.k === 'cheminee' && aq.tick % 5 === 0) aq.parts.push({x: d.x + 9, y: SAND - 32, vx: (Math.random() - .5) * .2, vy: -.35, life: 140, c: Math.random() < .3 ? '#ff9a4a' : '#3a3046'});
+  }
+  for (const b of aq.bubbles) b.y -= b.v; aq.bubbles = aq.bubbles.filter(b => b.y > TOP + 4);
+  for (const p of aq.parts) { p.x += p.vx; p.y += p.vy; p.life--; } aq.parts = aq.parts.filter(p => p.life > 0 && p.y > TOP);
+  for (const f of aq.flakes) f.y += f.y < SAND - 2 ? .35 : 0; if (aq.tick % 4 === 0) aq.flakes = aq.flakes.filter(f => ++f.t < 300);
   // each fish swims towards a target, and to the food when there is some
-  for (const f of aqTank().fish) {
-    const sw = aq.swim[f.k] ??= {x: 40 + Math.random() * 300, y: 40 + Math.random() * 120, tx: 0, ty: 0, dir: 1, wait: 0};
-    if (!sw.food || !aq.flakes.includes(sw.food)) { const near = aq.flakes.filter(fl => Math.abs(fl.x - sw.x) < 170); sw.food = near.length ? near[Math.floor(Math.random() * near.length)] : null; sw.sp ??= .6 + Math.random() * .6; sw.off = (Math.random() - .5) * 14; }
+  for (const f of tank.fish) {
+    const sw = aq.swim[f.k] ??= {x: GL + 40 + Math.random() * (GR - GL - 80), y: TOP + 30 + Math.random() * (SAND - TOP - 60), tx: 0, ty: 0, dir: 1, wait: 0};
+    if (!sw.food || !aq.flakes.includes(sw.food)) { const near = aq.flakes.filter(fl => Math.abs(fl.x - sw.x) < 200); sw.food = near.length ? near[Math.floor(Math.random() * near.length)] : null; sw.sp ??= .6 + Math.random() * .6; sw.off = (Math.random() - .5) * 10; }
     const food = sw.food;
     if (food) { sw.tx = food.x + sw.off; sw.ty = food.y; if (Math.hypot(food.x - sw.x, food.y - sw.y) < 6) { aq.flakes.splice(aq.flakes.indexOf(food), 1); sw.food = null; sw.wait = 0; } }
-    else if (--sw.wait <= 0 || Math.hypot(sw.tx - sw.x, sw.ty - sw.y) < 3) { sw.tx = 30 + Math.random() * (AQA.W - 60); sw.ty = 30 + Math.random() * (AQA.SAND - 70); sw.wait = 200 + Math.random() * 300; }
-    const sp = (food ? .9 * (sw.sp || 1) : .35) * (aqHappy(aqTank()) < 30 ? .5 : 1), dx = sw.tx - sw.x, dy = sw.ty - sw.y, d = Math.hypot(dx, dy) || 1;
+    else if (--sw.wait <= 0 || Math.hypot(sw.tx - sw.x, sw.ty - sw.y) < 3) { sw.tx = GL + 30 + Math.random() * (GR - GL - 60); sw.ty = TOP + 24 + Math.random() * (SAND - TOP - 50); sw.wait = 200 + Math.random() * 300; }
+    const sp = (food ? .9 * (sw.sp || 1) : .35) * (joy < 30 ? .5 : 1), dx = sw.tx - sw.x, dy = sw.ty - sw.y, d = Math.hypot(dx, dy) || 1;
     sw.x += dx / d * Math.min(sp, d); sw.y += dy / d * Math.min(sp * .6, d); if (Math.abs(dx) > 2) sw.dir = dx > 0 ? 1 : -1;
   }
+  // visitors: more of them when the fish are many and happy; they stop, love it (a heart) and sometimes leave a tip on the floor
+  if (tank.fish.length && aq.vis.length < 3 + Math.min(4, tank.fish.length / 2) && Math.random() < .004 * (.4 + joy / 100) * (1 + stars * .5)) aqSpawn();
+  for (const v of aq.vis) {
+    if (v.heart) v.heart--;
+    if (v.stop > 0) { if (--v.stop === 50 && joy >= 50) { v.heart = 60; if (Math.random() < .3 + stars * .15) aq.tips.push({x: v.x + 8 * v.dir, y: AQA.H - 30, vy: -1.5, t: 0}); } continue; }
+    v.x += v.sp * v.dir; v.step++;
+    if (!v.seen && Math.abs(v.x - v.tx) < 1) { v.seen = true; v.stop = 120 + Math.floor(Math.random() * 240); }
+  }
+  aq.vis = aq.vis.filter(v => v.x > -20 && v.x < W + 20);
+  for (const c of aq.tips) { c.t++; if (c.vy || c.y < AQA.H - 6) { c.y += c.vy; c.vy += .2; if (c.y >= AQA.H - 6) { c.y = AQA.H - 6; c.vy = 0; } } }
+  aq.tips = aq.tips.filter(c => c.t < 900);
+  for (const p of aq.pops) p.t++; aq.pops = aq.pops.filter(p => p.t < 50);
 }
-/* ---------- drawing ---------- */
-const AQ_DECOR = {  // little pixel decorations, standing on the sand
-  plante: (g, x, t) => { for (let i = 0; i < 4; i++) for (let y = 0; y < 26 + i * 4; y += 2) px(g, i % 2 ? '#3fa05a' : '#5fd08a', x + i * 4 + Math.round(Math.sin((y + t / 8) / 6) * 2), AQA.SAND - y, 2, 2); },
-  rocher: (g, x) => { px(g, '#5a5470', x, AQA.SAND - 12, 26, 12); px(g, '#8f8fa8', x + 4, AQA.SAND - 16, 14, 6); px(g, '#3a3448', x + 18, AQA.SAND - 8, 6, 6); },
-  corail: (g, x) => { for (const [a, h, c] of [[0, 18, '#ff7a8a'], [6, 26, '#ff5ad9'], [12, 14, '#ffa07a'], [18, 22, '#ff7a8a']]) { px(g, c, x + a, AQA.SAND - h, 3, h); px(g, c, x + a - 2, AQA.SAND - h + 4, 2, 3); px(g, c, x + a + 3, AQA.SAND - h + 8, 2, 3); } },
-  chateau: (g, x) => { px(g, '#a08a70', x, AQA.SAND - 30, 30, 30); for (let i = 0; i < 4; i++) px(g, '#a08a70', x + i * 8, AQA.SAND - 34, 5, 4); px(g, '#3a2a1a', x + 11, AQA.SAND - 14, 8, 14); px(g, '#3a2a1a', x + 5, AQA.SAND - 24, 4, 4); px(g, '#3a2a1a', x + 21, AQA.SAND - 24, 4, 4); },
-  coffre: (g, x, t) => { px(g, '#8a5020', x, AQA.SAND - 12, 22, 12); px(g, '#ffd07a', x, AQA.SAND - 8, 22, 2); px(g, '#ffd07a', x + 9, AQA.SAND - 10, 4, 4); if (t % 240 < 30) px(g, '#ffffff', x + 4, AQA.SAND - 14 - (t % 240) / 3, 2, 2); },
-  epave: (g, x) => { px(g, '#5a3a20', x, AQA.SAND - 14, 50, 14); px(g, '#7a5030', x + 6, AQA.SAND - 20, 30, 6); px(g, '#4a2a10', x + 30, AQA.SAND - 46, 3, 32); px(g, '#130a20', x + 10, AQA.SAND - 10, 5, 5); px(g, '#130a20', x + 24, AQA.SAND - 10, 5, 5); },
+/* ---------- drawing: everything in pixels, a painted tank behind glass ---------- */
+const aqEll = (g, c, cx, cy, rx, ry, top = false) => { for (let dy = -ry; dy <= (top ? 0 : ry); dy++) { const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy / (ry + .5)) ** 2))); px(g, c, cx - w, cy + dy, 2 * w + 1, 1); } };
+const AQB = () => AQA.SAND + 3;  // where the decorations stand
+const AQ_DECOR = {  // [width, height, draw]: little pixel decorations, standing on the sand (x: left edge)
+  plante: [18, 34, (g, x, t) => { for (let i = 0; i < 4; i++) for (let y = 0; y < 24 + i * 4; y += 2) { const sx = Math.round(Math.sin((y + t / 8 + i * 9) / 7) * (y / 12)); px(g, i % 2 ? '#2f8a4a' : '#5fd08a', x + 2 + i * 4 + sx, AQB() - y, 2, 2); if (y % 8 === 4) px(g, '#9ff0b0', x + 2 + i * 4 + sx + (i % 2 ? -2 : 2), AQB() - y, 2, 1); } }],
+  rocher: [30, 18, (g, x) => { const b = AQB(); aqEll(g, '#3a3448', x + 15, b - 2, 15, 9, true); aqEll(g, '#5a5470', x + 13, b - 3, 12, 8, true); aqEll(g, '#8f8fa8', x + 11, b - 7, 6, 3, true); px(g, '#b8b8d0', x + 8, b - 10, 4, 1); px(g, '#2a2436', x + 22, b - 4, 5, 2); }],
+  corail: [26, 30, (g, x) => { const b = AQB(); for (const [a, h, c, s] of [[2, 18, '#ff7a8a', '#c04a5a'], [8, 28, '#ff5ad9', '#b02a9a'], [15, 14, '#ffa07a', '#c0603a'], [20, 22, '#ff7a8a', '#c04a5a']]) { px(g, s, x + a + 1, b - h, 2, h); px(g, c, x + a, b - h, 2, h); px(g, c, x + a - 3, b - h + 5, 3, 2); px(g, c, x + a - 3, b - h + 2, 2, 3); px(g, c, x + a + 2, b - h + 10, 3, 2); px(g, c, x + a + 3, b - h + 7, 2, 3); px(g, '#ffe0f0', x + a, b - h, 1, 1); } }],
+  amphore: [16, 24, (g, x) => { const b = AQB(); aqEll(g, '#8a4a2a', x + 8, b - 9, 7, 9); aqEll(g, '#c0703a', x + 7, b - 10, 5, 7); px(g, '#8a4a2a', x + 5, b - 22, 6, 4); px(g, '#c0703a', x + 6, b - 22, 4, 1); px(g, '#e8a070', x + 4, b - 13, 2, 4); px(g, '#5a2a1a', x + 3, b - 8, 10, 1); }],
+  chateau: [32, 40, (g, x, t) => { const b = AQB(); px(g, '#6a5a48', x, b - 30, 32, 30); px(g, '#a08a70', x + 1, b - 30, 28, 29); for (let i = 0; i < 4; i++) { px(g, '#a08a70', x + 1 + i * 8, b - 35, 5, 5); px(g, '#c8b090', x + 1 + i * 8, b - 35, 5, 1); } px(g, '#8a7458', x + 9, b - 40, 14, 10); px(g, '#a08a70', x + 10, b - 40, 12, 9); px(g, '#3a2a1a', x + 12, b - 14, 8, 14); px(g, '#2a1a0a', x + 13, b - 13, 6, 13); px(g, '#3a2a1a', x + 5, b - 24, 4, 5); px(g, '#3a2a1a', x + 23, b - 24, 4, 5); px(g, '#c8b090', x + 1, b - 30, 28, 1); if (t % 300 < 40) px(g, '#ffd07a', x + 14, b - 36, 2, 2); }],
+  arche: [46, 36, (g, x) => { const b = AQB(); px(g, '#4a4458', x, b - 30, 10, 30); px(g, '#4a4458', x + 36, b - 30, 10, 30); px(g, '#6a6478', x + 1, b - 30, 7, 30); px(g, '#6a6478', x + 37, b - 30, 7, 30); for (let i = 0; i < 46; i++) { const y = Math.round(Math.sin(i / 45 * Math.PI) * 7); px(g, '#4a4458', x + i, b - 36 - y, 1, 9); px(g, '#7a7488', x + i, b - 36 - y, 1, 2); } px(g, '#3f9a5a', x + 4, b - 34, 2, 6); px(g, '#3f9a5a', x + 30, b - 41, 2, 5); }],
+  coffre: [24, 18, (g, x, t) => { const b = AQB(), open = t % 360 < 120 ? 0 : t % 360 < 140 ? (t % 360 - 120) / 4 : 5; px(g, '#5a3010', x, b - 12, 24, 12); px(g, '#8a5020', x + 1, b - 11, 22, 10); px(g, '#ffd07a', x, b - 8, 24, 2); px(g, '#ffd07a', x + 10, b - 10, 4, 5); px(g, '#5a3010', x, b - 17 - open, 24, 5); px(g, '#a06a30', x + 1, b - 16 - open, 22, 3); if (open) { px(g, '#ffd84a', x + 3, b - 13, 18, 2); if (t % 20 < 10) px(g, '#ffffff', x + 6 + t % 12, b - 14, 1, 1); } }],
+  bulleur: [12, 10, (g, x) => { const b = AQB(); aqEll(g, '#3a3448', x + 6, b - 2, 6, 4, true); aqEll(g, '#6a6478', x + 6, b - 3, 4, 2, true); px(g, '#1a1426', x + 5, b - 6, 3, 1); }],
+  epave: [58, 50, (g, x) => { const b = AQB(); for (let i = 0; i < 58; i++) { const h = 12 + Math.round(Math.sin(i / 57 * Math.PI) * 4); px(g, '#4a2a10', x + i, b - h, 1, h); px(g, '#7a5030', x + i, b - h, 1, 2); } px(g, '#6a4020', x + 8, b - 22, 32, 6); px(g, '#8a6040', x + 8, b - 22, 32, 1); px(g, '#4a2a10', x + 32, b - 50, 3, 30); px(g, '#4a2a10', x + 24, b - 44, 18, 2); px(g, '#cfc8b0', x + 35, b - 46, 12, 9); px(g, '#a8a090', x + 35, b - 40, 12, 2); for (const hx of [10, 24, 46]) px(g, '#130a20', x + hx, b - 10, 5, 5); px(g, '#3f9a5a', x + 4, b - 18, 2, 7); }],
+  souche: [38, 26, (g, x) => { const b = AQB(); px(g, '#4a3220', x + 8, b - 22, 22, 22); px(g, '#6a4a30', x + 10, b - 22, 16, 22); aqEll(g, '#8a6a40', x + 19, b - 22, 11, 2); aqEll(g, '#b08a5a', x + 19, b - 22, 6, 1); for (const [a, l] of [[0, 9], [30, 8], [5, 5], [27, 6]]) px(g, '#4a3220', x + a, b - 4, l, 4); px(g, '#3f9a5a', x + 12, b - 26, 2, 4); px(g, '#5fd08a', x + 24, b - 25, 3, 3); }],
+  phare: [16, 46, (g, x, t) => { const b = AQB(); aqEll(g, '#5a5470', x + 8, b - 2, 8, 4, true); for (let y = 6; y < 38; y++) { const w = 5 - Math.floor((y - 6) / 12); px(g, Math.floor(y / 6) % 2 ? '#f0f0f8' : '#e04a4a', x + 8 - w, b - y, 2 * w, 1); } px(g, '#2a2436', x + 4, b - 42, 8, 4); px(g, t % 120 < 60 ? '#ffe48a' : '#6a6050', x + 5, b - 41, 6, 2); px(g, '#2a2436', x + 5, b - 46, 6, 4); }],
+  tiki: [16, 32, (g, x) => { const b = AQB(); px(g, '#5a3a20', x + 2, b - 30, 12, 30); px(g, '#8a5a30', x + 3, b - 30, 10, 30); px(g, '#2a1408', x + 4, b - 24, 3, 3); px(g, '#2a1408', x + 9, b - 24, 3, 3); px(g, '#ffd07a', x + 5, b - 23, 1, 1); px(g, '#ffd07a', x + 10, b - 23, 1, 1); px(g, '#2a1408', x + 5, b - 16, 6, 3); px(g, '#e8e0d0', x + 6, b - 15, 4, 1); px(g, '#3f9a5a', x, b - 34, 16, 4); px(g, '#5fd08a', x + 2, b - 36, 4, 2); px(g, '#5fd08a', x + 10, b - 36, 4, 2); }],
+  igloo: [34, 22, (g, x) => { const b = AQB(); aqEll(g, '#9ab8d0', x + 17, b, 17, 20, true); aqEll(g, '#e8f4ff', x + 16, b - 1, 15, 18, true); for (let r = 1; r < 4; r++) px(g, '#b8d0e4', x + 3, b - r * 5, 28, 1); px(g, '#4a6a8a', x + 12, b - 9, 10, 9); px(g, '#203450', x + 13, b - 8, 8, 8); }],
+  cheminee: [20, 34, (g, x, t) => { const b = AQB(); for (let y = 0; y < 30; y++) { const w = 9 - Math.floor(y / 6); px(g, '#2a2436', x + 10 - w, b - y, 2 * w, 1); px(g, '#3a3448', x + 10 - w + 1, b - y, 3, 1); } px(g, t % 40 < 20 ? '#ff9a4a' : '#ff6a2a', x + 8, b - 32, 4, 3); px(g, '#ffe48a', x + 9, b - 31, 2, 1); }],
 };
+function aqBg(w) {  // the still parts of a tank of this water (cached): deep water in dithered bands, far scenery, sand
+  if (aq.bg[w]) return aq.bg[w];
+  const c = document.createElement('canvas'), {W, H, TOP, SAND, GB} = AQA; c.width = W; c.height = H;
+  const g = c.getContext('2d'), col = FI_SPOTS[AQA.waters[w][2]].water, r = seeded(w.length * 991 + 7);
+  const grad = k => k < .5 ? mixc(col[0], col[1], k * 2) : mixc(col[1], col[2], (k - .5) * 2), N = 12;
+  for (let y = TOP; y < GB; y++) {
+    const k = (y - TOP) / (GB - TOP) * (N - 1), lo = Math.floor(k), fr = k - lo;
+    px(g, grad(lo / (N - 1)), 0, y, W, 1);
+    if (fr > .6) { g.fillStyle = grad(Math.min(1, (lo + 1) / (N - 1))); for (let x = (y + (fr > .8 ? 0 : 1)) % 2; x < W; x += fr > .8 ? 1 + (y % 2) : 2) g.fillRect(x, y, 1, 1); }
+  }
+  const far = mixc(col[1], col[2], .55), far2 = mixc(col[1], col[2], .3);
+  if (w === 'douce') {  // reeds and a sunken log
+    for (let i = 0; i < 46; i++) { const x = Math.floor(r() * W), h = 40 + Math.floor(r() * 90); px(g, i % 3 ? far : far2, x, SAND - h, 2, h); if (r() < .4) px(g, far, x - 2, SAND - h + 10, 2, 8); }
+    aqEll(g, far2, 330, SAND - 6, 60, 8, true); aqEll(g, far, 270, SAND - 6, 9, 9);
+  } else if (w === 'mer') {  // rock arches far away
+    for (let i = 0; i < 7; i++) { const x = 20 + i * 70 + Math.floor(r() * 30), rx = 28 + Math.floor(r() * 26), ry = 30 + Math.floor(r() * 50); aqEll(g, i % 2 ? far : far2, x, SAND, rx, ry, true); }
+    aqEll(g, mixc(far, col[0], .2), 250, SAND - 40, 14, 12);
+  } else if (w === 'tropical') {  // a reef of soft colours
+    for (let i = 0; i < 16; i++) { const x = Math.floor(r() * W), h = 20 + Math.floor(r() * 60), c2 = mixc(far2, ['#ff7a8a', '#ffa07a', '#c08aff', '#7fe0ee'][i % 4], .35); for (let j = 0; j < 5; j++) px(g, c2, x + j * 4 - 8, SAND - h + Math.abs(j - 2) * 8, 3, h); aqEll(g, c2, x, SAND, 14, 10, true); }
+  } else if (w === 'polaire') {  // a wall of ice
+    let y = TOP + 60; for (let x = 0; x < W; x += 4) { y = Math.max(TOP + 30, Math.min(TOP + 110, y + Math.floor(r() * 21) - 10)); px(g, mixc('#cfe8f4', far2, .45), x, y, 4, SAND - y); px(g, mixc('#ffffff', far2, .25), x, y, 4, 2); if (r() < .15) px(g, mixc('#ffffff', far2, .5), x + 1, y + 6, 1, 20 + Math.floor(r() * 30)); }
+    for (let i = 0; i < 5; i++) { const x = 30 + i * 100, w2 = 30 + Math.floor(r() * 30); px(g, '#e8f4ff', x, TOP, w2, 5); px(g, '#b8d0e4', x + 4, TOP + 5, w2 - 8, 4); }
+  } else {  // abyss: dark spires
+    for (let i = 0; i < 12; i++) { const x = Math.floor(r() * W), h = 40 + Math.floor(r() * 110); for (let y = 0; y < h; y++) px(g, i % 2 ? far : '#06081c', x - Math.round((h - y) / 8), SAND - y, Math.max(2, Math.round((h - y) / 4)), 1); }
+  }
+  const sand = AQA.sandCol[w], dark = mixc(sand, '#000000', .3), light = mixc(sand, '#ffffff', .25);
+  for (let x = 0; x < W; x += 2) { const top = SAND + Math.round(Math.sin(x / 37) * 2 + Math.sin(x / 13)); px(g, sand, x, top, 2, GB - top); px(g, light, x, top, 2, 1); }
+  for (let y = SAND + 8; y < GB; y += 2) for (let x = (y / 2) % 2 * 2; x < W; x += 4 + (y > SAND + 20 ? 0 : 2)) px(g, dark, x, y, 1, 1);
+  for (let i = 0; i < 70; i++) { const x = Math.floor(r() * W), y = SAND + 5 + Math.floor(r() * (GB - SAND - 6)); px(g, [dark, light, mixc(sand, '#6a5a48', .5)][i % 3], x, y, 2 + (i % 3), 2); }
+  return aq.bg[w] = c;
+}
+const aqArtCache = new Map();
+const aqArt = f => {  // a rare colour: the same fish, colours turned
+  const a = fiArt(aqFish(f)); if (!f.v) return a;
+  if (!aqArtCache.has(f.id)) { const c = document.createElement('canvas'); c.width = a.width; c.height = a.height; const g = c.getContext('2d'); g.filter = 'hue-rotate(150deg) saturate(1.5) brightness(1.1)'; g.drawImage(a, 0, 0); aqArtCache.set(f.id, c); }
+  return aqArtCache.get(f.id);
+};
+const aqScale = f => f.cm >= 50 ? 2 : 1;  // big fish are drawn twice as big
+const AQ_STAR = ['...#...', '..###..', '#######', '.#####.', '.##.##.', '##...##'];
+const AQ_HEART = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
+function aqVisitor(g, v, rim) {  // seen from behind, a dark shape against the glass, lit at its edges by the tank
+  const h = v.child ? 50 : 72, r = v.child ? 6 : 7, sh = v.child ? 10 : 15, x = Math.round(v.x), bob = v.stop ? 0 : Math.floor(v.step / 10) % 2, top = AQA.H - h + bob, body = '#0a0612';
+  const shape = (c, dx, dy) => {
+    for (let y = top + 2 * r + 1; y < AQA.H; y++) { const w = Math.min(sh, sh - 6 + (y - top - 2 * r) * 2); px(g, c, x - w + dx, y + dy, 2 * w, 1); }
+    aqEll(g, c, x + dx, top + r + dy, r, r); px(g, c, x - 2 + dx, top + 2 * r - 1 + dy, 4, 3);  // the neck
+    if (v.look === 1) { px(g, c, x - r - 2 + dx, top + 2 + dy, 2 * r + 5, 2); px(g, c, x - r + 1 + dx, top - 2 + dy, 2 * r - 1, 4); }  // a hat
+    if (v.look === 2) px(g, c, x - 1 + dx, top + 2 * r - 2 + dy, 3, 10);  // a ponytail
+    if (v.look === 3) { aqEll(g, c, x - r + 1 + dx, top + 1 + dy, 3, 3); aqEll(g, c, x + r - 1 + dx, top + 1 + dy, 3, 3); }  // buns
+  };
+  shape(rim, 0, -1); shape(mixc(rim, body, .5), -1, 0); shape(mixc(rim, body, .5), 1, 0); shape(body, 0, 0);
+  if (v.heart) { const k = 60 - v.heart; sprite(g, AQ_HEART, x - 3, top - 12 - Math.floor(k / 4), {'#': k > 45 && k % 4 < 2 ? '#ff9ae9' : '#ff5ad9'}); }
+}
 function aqDraw() {
-  const g = aq.g, t = aq.tick, tank = aqTank(), W = AQA.W, H = AQA.H, water = FI_SPOTS[AQA.waters[tank.water][2]].water;
-  for (let y = 0; y < H; y += 4) { px(g, mixc(water[0], water[2], y / H), 0, y, W, 4); }
-  for (let i = 0; i < 6; i++) { g.fillStyle = 'rgba(255,255,255,.04)'; g.beginPath(); const x = (i * 83 + t / 6) % (W + 80) - 40; g.moveTo(x, 0); g.lineTo(x + 24, 0); g.lineTo(x - 30, AQA.SAND); g.lineTo(x - 44, AQA.SAND); g.fill(); }  // light rays
-  px(g, '#c9b47a', 0, AQA.SAND, W, H - AQA.SAND); for (let x = 0; x < W; x += 7) px(g, '#a8935a', x, AQA.SAND + 3 + (x * 5) % 12, 3, 1);
-  for (let i = 0; i < 9; i++) { const bx = 14 + i * 44 + (i % 3) * 7, len = 18 + (i * 11) % 26; for (let j = 0; j < len; j += 2) px(g, mixc(i % 2 ? '#2f7a4a' : '#3a8f5c', water[2], j / len * .5 + .2), bx + Math.round(Math.sin((t / 40) + i + j / 6) * (1 + j / 10)), AQA.SAND - j, 2, 2); }
-  for (let i = 0; i < 22; i++) { const gx = (i * 37) % W; px(g, ['#8f7a4a', '#d8c48a', '#6f6a58'][i % 3], gx, AQA.SAND + 6 + (i * 5) % (H - AQA.SAND - 8), 3 + i % 3, 2); }
-  tank.decor.forEach((d, i) => AQ_DECOR[d](g, 18 + i * 92 + (i % 2) * 20, t));
+  const g = aq.g, t = aq.tick, tank = aqTank(), {W, H, TOP, SAND, GL, GR, GB} = AQA, col = FI_SPOTS[AQA.waters[tank.water][2]].water, dark = tank.water === 'abysses';
+  g.imageSmoothingEnabled = false;
+  g.drawImage(aqBg(tank.water), 0, 0);
+  g.save(); g.beginPath(); g.rect(GL, TOP, GR - GL, GB - TOP); g.clip();
+  if (!dark) for (let i = 0; i < 6; i++) { g.fillStyle = `rgba(255,255,255,${tank.water === 'tropical' ? .07 : .045})`; g.beginPath(); const x = (i * 97 + t / 6) % (W + 100) - 50; g.moveTo(x, TOP); g.lineTo(x + 26, TOP); g.lineTo(x - 34, SAND); g.lineTo(x - 50, SAND); g.fill(); }  // light rays
+  const weed = {douce: ['#2f7a4a', '#3a8f5c'], mer: ['#5a7a3a', '#6f8f4a'], tropical: ['#3fa07a', '#ff7a9a'], polaire: ['#5a7a8a', '#6a8a9a'], abysses: ['#3a2a5a', '#ff5ad9']}[tank.water];
+  for (let i = 0; i < 11; i++) { const bx = GL + 10 + i * 42 + (i % 3) * 7, len = 16 + (i * 11) % 26; for (let j = 0; j < len; j += 2) px(g, mixc(weed[0], col[2], j / len * .4 + .1), bx + Math.round(Math.sin(t / 40 + i + j / 6) * (1 + j / 12)), SAND + 2 - j, 2, 2); if (dark) px(g, t % 90 < 45 ? weed[1] : '#ff9ae9', bx + Math.round(Math.sin(t / 40 + i + len / 6) * (1 + len / 12)), SAND + 2 - len, 2, 2); }
+  if (!dark) for (let i = 0; i < 34; i++) { const x = (i * 53 + Math.round(Math.sin(t / 60 + i) * 6)) % W, y = SAND + 4 + (i * 7) % 26; g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(x, y, 3 + i % 3, 1); }  // light on the sand
+  for (const d of tank.decor) { AQ_DECOR[d.k][2](g, Math.round(d.x), t); if (aq.drag?.d === d) { g.strokeStyle = '#ffd07a'; g.strokeRect(Math.round(d.x) - 1.5, AQB() - AQ_DECOR[d.k][1] - 1.5, AQ_DECOR[d.k][0] + 3, AQ_DECOR[d.k][1] + 3); } }
   for (const f of aq.flakes) px(g, '#e8b070', f.x, f.y, 2, 2);
   for (const f of tank.fish) {
     const sw = aq.swim[f.k]; if (!sw) continue;
-    const art = fiArt(aqFish(f)), sc = art.width <= 26 ? 2 : 1, w = art.width * sc, h = art.height * sc, bob = Math.sin((t + f.k * 40) / 20) * 1.5;
-    g.save(); g.imageSmoothingEnabled = false; g.translate(Math.round(sw.x), Math.round(sw.y + bob)); if (sw.dir < 0) g.scale(-1, 1);
-    g.drawImage(art, -w / 2, -h / 2, w, h); g.restore();
+    const art = aqArt(f), sc = aqScale(f), w = art.width * sc, h = art.height * sc, bob = Math.sin((t + f.k * 40) / 20) * 1.5;
+    g.save(); g.translate(Math.round(sw.x), Math.round(sw.y + bob)); if (sw.dir < 0) g.scale(-1, 1);
+    g.drawImage(art, -Math.round(w / 2), -Math.round(h / 2), w, h); g.restore();
+    if (f.v && t % 50 < 6) px(g, '#ffffff', sw.x + Math.sin(t) * w / 3, sw.y - h / 2, 1, 1);
     if (aq.sel === f.k) { g.strokeStyle = '#ffd07a'; g.strokeRect(Math.round(sw.x - w / 2) - 2.5, Math.round(sw.y - h / 2) - 2.5, w + 5, h + 5); }
   }
-  for (const b of aq.bubbles) { g.strokeStyle = 'rgba(255,255,255,.5)'; g.strokeRect(Math.round(b.x + Math.sin(b.y / 9) * 2) + .5, Math.round(b.y) + .5, 2, 2); }
-  if (tank.dirt > 30) { g.fillStyle = `rgba(90,110,40,${(tank.dirt - 30) / 180})`; g.fillRect(0, 0, W, AQA.SAND); }  // the water goes green
-  // the glass and the gauges
-  g.fillStyle = 'rgba(11,3,28,.6)'; g.fillRect(0, 0, W, 16);
-  g.font = '6px "Press Start 2P", monospace'; const gauge = (x, label, v, col) => { g.fillStyle = '#d9c6ff'; g.fillText(label, x, 11); px(g, '#2a1f50', x + 46, 5, 50, 6); px(g, col, x + 46, 5, v / 2, 6); };
-  gauge(6, 'FAIM', 100 - tank.food, tank.food > 30 ? '#8ee8a0' : '#ff4f6d'); gauge(110, 'SALE', tank.dirt, tank.dirt < 40 ? '#8ee8a0' : '#ffc23a'); gauge(214, 'JOIE', aqHappy(tank), '#ff5ad9');
-  g.fillStyle = '#ffd07a'; g.textAlign = 'right'; g.fillText(tank.fish.length + '/' + AQA.sizes[tank.size][1], W - 6, 11); g.textAlign = 'left';
-  if (!tank.fish.length) gameText(g, W, [['BASSIN VIDE', '#ffd07a', 9], ['AJOUTE DES POISSONS DU VIVIER', '#ffffff', 7]], 100);
+  for (const b of aq.bubbles) { const x = Math.round(b.x + Math.sin(b.y / 9) * 2), s = b.v > .9 ? 3 : 2; g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x, Math.round(b.y), s, 1); g.fillRect(x, Math.round(b.y) + s, s, 1); g.fillRect(x - 1, Math.round(b.y) + 1, 1, s - 1); g.fillRect(x + s, Math.round(b.y) + 1, 1, s - 1); }
+  for (const p of aq.parts) px(g, p.c, p.x, p.y, 2, 2);
+  if (dark || tank.water === 'polaire') for (let i = 0; i < 40; i++) { const x = (i * 97 + t * .08 * (i % 3 + 1)) % W, y = TOP + (i * 53 + t * .12) % (GB - TOP); px(g, dark ? (i % 7 ? '#5a6a9a' : '#7fe0ee') : '#e8f4ff', x, y, 1, 1); }  // marine snow
+  if (tank.dirt > 30) { g.fillStyle = `rgba(90,110,40,${(tank.dirt - 30) / 170})`; g.fillRect(0, 0, W, GB); }  // the water goes green
+  if (tank.dirt > 55) { const r = seeded(7); for (let i = 0; i < (tank.dirt - 55) * 1.2; i++) { const side = i % 3, x = side === 0 ? GL + r() * 14 : side === 1 ? GR - r() * 14 : GL + r() * (GR - GL), y = side === 2 ? TOP + r() * 10 : TOP + r() * (GB - TOP); px(g, i % 2 ? '#4a6a2a' : '#6a8a3a', x, y, 2 + (i % 3), 2); } }  // algae on the glass
+  for (let x = GL; x < GR; x += 4) px(g, mixc(col[0], '#ffffff', .35), x, TOP + (Math.sin(x / 20 + t / 30) > .3 ? 1 : 0), 4, 1);  // the water's surface
+  g.fillStyle = 'rgba(255,255,255,.05)'; g.beginPath(); g.moveTo(GL + 40, TOP); g.lineTo(GL + 70, TOP); g.lineTo(GL + 10, GB); g.lineTo(GL - 20, GB); g.fill(); g.beginPath(); g.moveTo(GL + 84, TOP); g.lineTo(GL + 92, TOP); g.lineTo(GL + 32, GB); g.lineTo(GL + 24, GB); g.fill();  // reflections on the glass
+  g.restore();
+  // the frame, the room and its floor
+  px(g, '#1c1528', 0, 0, GL, GB + 6); px(g, '#1c1528', GR, 0, W - GR, GB + 6); px(g, '#2e2440', GL - 2, TOP, 2, GB - TOP); px(g, '#2e2440', GR, TOP, 2, GB - TOP);
+  px(g, '#100b1a', 0, GB + 6, W, H - GB - 6); px(g, '#2e2440', 0, GB, W, 6); px(g, '#4a3c60', 0, GB, W, 1); for (const x of [3, W - 5]) for (const y of [TOP + 4, GB - 6]) px(g, '#6a5a80', x, y, 2, 2);
+  g.fillStyle = `rgba(${parseInt(col[0].substr(1, 2), 16)},${parseInt(col[0].substr(3, 2), 16)},${parseInt(col[0].substr(5, 2), 16)},.14)`; g.fillRect(0, GB + 6, W, 10);  // the tank's glow on the floor
+  // the tip jar
+  const s = aqSave(), jx = W - 34, jy = H - 24, full = Math.min(1, s.cash / (aqIncome(tank) * 6 + 60));
+  px(g, '#9fd8e8', jx, jy, 20, 22); px(g, '#1a2a3a', jx + 1, jy + 1, 18, 20); px(g, '#ffd84a', jx + 1, jy + 21 - Math.round(full * 18), 18, Math.round(full * 18)); for (let i = 0; i < full * 12; i++) px(g, '#c0902a', jx + 2 + (i * 5) % 15, jy + 20 - (i * 7) % Math.max(1, Math.round(full * 18)), 2, 1);
+  px(g, '#c8e8f0', jx + 2, jy + 2, 1, 14); px(g, '#6a5a80', jx - 1, jy - 2, 22, 3);
+  g.font = '6px "Press Start 2P", monospace'; g.textAlign = 'center'; g.fillStyle = '#ffd84a'; g.fillText(String(Math.floor(s.cash)), jx + 10, jy - 5); g.textAlign = 'left';
+  for (const c of aq.tips) { if (c.t > 780 && c.t % 10 < 5) continue; const w = [5, 3, 1, 3][Math.floor(t / 8) % 4]; px(g, '#c0902a', c.x - Math.floor(w / 2), c.y, w, 5); px(g, '#ffd84a', c.x - Math.floor(w / 2), c.y, w, 4); if (w > 2) px(g, '#ffffff', c.x - 1, c.y + 1, 1, 1); }
+  const rim = mixc(col[0], '#ffffff', .45);
+  for (const v of aq.vis) aqVisitor(g, v, rim);
+  for (const p of aq.pops) { g.fillStyle = '#ffd84a'; g.font = '6px "Press Start 2P", monospace'; g.textAlign = 'center'; g.fillText(p.text, p.x, p.y - p.t / 3); g.textAlign = 'left'; }
+  // the gauges, with their little icons, and the stars of the tank
+  px(g, '#0b0716', 0, 0, W, TOP); px(g, '#2e2440', 0, TOP - 1, W, 1);
+  const gauge = (x, icon, label, v, c) => { sprite(g, icon, x, 5, {'#': c, o: '#ffffff'}); g.fillStyle = '#d9c6ff'; g.font = '6px "Press Start 2P", monospace'; g.fillText(label, x + 10, 12); px(g, '#2a1f50', x + 46, 6, 52, 6); px(g, c, x + 47, 7, Math.round(v / 2), 4); px(g, '#ffffff', x + 47, 7, Math.round(v / 2), 1); };
+  gauge(6, ['.o.o.', 'o#o#o', '.o#o.', 'o#o#o', '.o.o.', '.....'], 'FAIM', 100 - tank.food, tank.food > 30 ? '#8ee8a0' : '#ff4f6d');
+  gauge(124, ['..#..', '.###.', '#####', '##o##', '.###.', '.....'], 'SALE', tank.dirt, tank.dirt < 40 ? '#8ee8a0' : '#ffc23a');
+  gauge(242, ['##.##', '#####', '#####', '.###.', '..#..', '.....'], 'JOIE', aqHappy(tank), '#ff5ad9');
+  const st = aqStars(tank); for (let i = 0; i < 3; i++) sprite(g, AQ_STAR, 368 + i * 10, 5, {'#': i < st ? '#ffd84a' : '#3a2f5a'});
+  g.fillStyle = '#ffd07a'; g.textAlign = 'right'; g.fillText(tank.fish.length + '/' + AQA.sizes[tank.size][1], W - 6, 12); g.textAlign = 'left';
+  if (!tank.fish.length) gameText(g, W, [['BASSIN VIDE', '#ffd07a', 9], ['AJOUTE DES POISSONS DU VIVIER', '#ffffff', 7]], 110);
 }
 /* ---------- page ---------- */
 function aqBuy(price, then) { const f = fiSave(); if (f.money < price) return toast('Pas assez de pièces (' + f.money + ' / ' + price + ')', true); f.money -= price; then(); saveGames(); sfx('notify'); aqUi(); }
-const aqFishName = f => aqFish(f).name + ' · ' + f.cm + ' cm';
+const aqFishName = f => aqFish(f).name + ' · ' + Math.round(f.cm) + ' cm' + (f.v ? ' · couleur rare' : '') + (f.born && !aqAdult(f) ? ' · jeune' : '');
+function aqPut(f) {  // from the pool to the tank shown
+  const s = aqSave(), tank = aqTank(); s.pool.splice(s.pool.indexOf(f), 1); tank.fish.push(f); fiSave().money += aqDexAdd(s, f); aqNews(); saveGames(); sfx('click'); aqUi();
+}
+function aqCash() { const s = aqSave(), n = Math.floor(s.cash); if (!n) return; s.cash -= n; s.earned += n; fiSave().money += n; saveGames(); sfx('notify'); toast('+' + n + ' pièces pour la Pêche'); aqUi(); }
 function aqUi(soft) {
   const s = aqSave(), tank = aqTank(), money = fiSave().money;
   $('aqInfo').textContent = money + ' pièces (Pêche) · caisse ' + Math.floor(s.cash) + ' · ' + s.tanks.reduce((a, t) => a + aqIncome(t), 0).toFixed(1).replace('.', ',') + ' pièces / h · ' + s.tanks.reduce((a, t) => a + t.fish.length, 0) + ' poissons · ' + Math.floor(s.visitors) + ' visiteurs';
   $('aqCash').textContent = 'ENCAISSER ' + Math.floor(s.cash);
-  $('aqTank').replaceChildren(...s.tanks.map((t, i) => Object.assign(el('option', '', 'Bassin ' + (i + 1) + ' · ' + AQA.waters[t.water][0] + ' · ' + AQA.sizes[t.size][0] + ' (' + t.fish.length + '/' + AQA.sizes[t.size][1] + ')'), {value: i})));
+  $('aqTank').replaceChildren(...s.tanks.map((t, i) => Object.assign(el('option', '', 'Bassin ' + (i + 1) + ' · ' + AQA.waters[t.water][0] + ' · ' + AQA.sizes[t.size][0] + ' (' + t.fish.length + '/' + AQA.sizes[t.size][1] + ')' + (aqStars(t) ? ' ' + '★'.repeat(aqStars(t)) : '')), {value: i})));
   $('aqTank').value = s.tanks.indexOf(tank);
-  if (soft) return;
-  // the fish of this tank
+  if (soft && aq.goalsSeen === aqGoalKey(s)) return;
+  // the fish of this tank, and its decorations
   const inTank = el('div', 'sysCard px aqCol'); inTank.append(el('b', '', 'Dans ce bassin'));
   if (!tank.fish.length) inTank.append(el('small', 'hint', 'Aucun poisson.'));
   for (const f of tank.fish) {
-    const row = el('div', 'aqRow' + (aq.sel === f.k ? ' on' : '')), img = el('img'); img.src = fiArtUrl(aqFish(f), false, 2);
+    const row = el('div', 'aqRow' + (aq.sel === f.k ? ' on' : '')), img = el('img'); img.src = fiArtUrl(aqFish(f), false, 2); if (f.v) img.style.filter = 'hue-rotate(150deg) saturate(1.5) brightness(1.1)';
     const out = el('button', 'btn px', 'AU VIVIER'); out.onclick = () => { tank.fish.splice(tank.fish.indexOf(f), 1); s.pool.push(f); saveGames(); aqUi(); };
     row.append(img, el('span', '', aqFishName(f) + ' · ' + FI_RARITY[aqFish(f).rarity][0]), out); row.onclick = e => { if (e.target !== out) { aq.sel = aq.sel === f.k ? null : f.k; aqUi(); } };
     inTank.append(row);
   }
+  if (tank.decor.length) {
+    inTank.append(el('small', 'hint', 'Décors : fais-les glisser sur le sable.'));
+    tank.decor.forEach((d, i) => { const row = el('div', 'aqRow'), rm = el('button', 'btn px', 'RETIRER'); rm.onclick = () => { tank.decor.splice(i, 1); saveGames(); aqUi(); }; row.append(el('span', '', AQA.decor[d.k][0]), rm); inTank.append(row); });
+  }
   // the holding pool: fish waiting for a tank
   const pool = el('div', 'sysCard px aqCol'); pool.append(el('b', '', 'Vivier · ' + s.pool.length + ' poisson' + (s.pool.length > 1 ? 's' : '')), el('small', 'hint', 'Chaque poisson pêché arrive ici vivant (60 au plus).'));
   for (const f of [...s.pool].reverse()) {
-    const row = el('div', 'aqRow'), img = el('img'); img.src = fiArtUrl(aqFish(f), false, 2);
+    const row = el('div', 'aqRow'), img = el('img'); img.src = fiArtUrl(aqFish(f), false, 2); if (f.v) img.style.filter = 'hue-rotate(150deg) saturate(1.5) brightness(1.1)';
     const fits = aqFits(f, tank), big = aqNeedSize(f) > tank.size, full = tank.fish.length >= AQA.sizes[tank.size][1];
     const put = el('button', 'btn px' + (fits && !big && !full ? ' main' : ''), 'METTRE'); put.disabled = !fits || big || full;
     put.title = !fits ? 'Pas la bonne eau : ' + [...aqFish(f).spots].map(p => FI_SPOTS[p].name).join(', ') : big ? 'Trop grand : il faut un bassin ' + AQA.sizes[aqNeedSize(f)][0].toLowerCase() : full ? 'Bassin plein' : 'Dans ce bassin';
-    put.onclick = () => { s.pool.splice(s.pool.indexOf(f), 1); tank.fish.push(f); saveGames(); sfx('click'); aqUi(); };
-    const v = Math.max(1, Math.round(fiValue(aqFish(f), f.cm) / 2)), free = el('button', 'btn px', 'RELÂCHER +' + v);
+    put.onclick = () => aqPut(f);
+    const v = Math.max(1, Math.round(aqVal(f) / 2)), free = el('button', 'btn px', 'RELÂCHER +' + v);
     free.title = 'Le rendre à l\'eau : la moitié de sa valeur en pièces'; free.onclick = () => { s.pool.splice(s.pool.indexOf(f), 1); fiSave().money += v; saveGames(); aqUi(); };
-    row.append(img, el('span', '', aqFishName(f)), put, free); pool.append(row);
+    row.append(img, el('span', '', aqFishName(f) + (s.dex[f.id] ? '' : ' · nouveau !')), put, free); pool.append(row);
   }
   // the shop, paid with the Pêche coins
   const shop = el('div', 'sysCard px aqCol'); shop.append(el('b', '', 'Boutique · ' + money + ' pièces'));
   const item = (label, price, ok, then, why = '') => { const b = el('button', 'btn px aqShop', label + (ok ? ' · ' + price : why ? ' · ' + why : '')); b.disabled = !ok || money < price; b.onclick = () => aqBuy(price, then); shop.append(b); };
-  const next = AQA.sizes[tank.size + 1];
+  const next = AQA.sizes[tank.size + 1], room = tank.decor.length < AQA.maxDecor;
   item(next ? 'Agrandir : ' + next[0].toLowerCase() + ' (' + next[1] + ' places)' : 'Bassin au plus grand', next?.[2], !!next, () => tank.size++);
   item('Filtre (l\'eau se salit 3 × moins vite)', 600, !tank.filter, () => tank.filter = true, 'installé');
   item('Distributeur (nourrit tout seul)', 1200, !tank.feeder, () => tank.feeder = true, 'installé');
-  for (const [k, [name, price]] of Object.entries(AQA.decor)) item('Décor : ' + name.toLowerCase(), price, tank.decor.length < 4, () => tank.decor.push(k), '4 au plus');
+  const place = k => () => { const [w] = AQ_DECOR[k]; tank.decor.push({k, x: AQA.GL + 10 + Math.floor(Math.random() * (AQA.GR - AQA.GL - w - 20))}); };
+  for (const [k, [name, price, w]] of Object.entries(AQA.decor)) {
+    if (w && !s.unlock[k]) { const b = el('button', 'btn px aqShop', 'Décor : ' + name.toLowerCase() + ' · à gagner (carnet ' + AQA.waters[w][0].toLowerCase() + ' à moitié)'); b.disabled = true; shop.append(b); continue; }
+    item('Décor : ' + name.toLowerCase(), price, room, place(k), AQA.maxDecor + ' au plus');
+  }
   const nb = el('div', 'row'), sel = el('select', 'f gSel'); sel.append(...Object.entries(AQA.waters).map(([k, [n]]) => Object.assign(el('option', '', n), {value: k})));
   const price = AQA.tankPrice(s.tanks.length), add = el('button', 'btn main px', 'NOUVEAU BASSIN · ' + price); add.disabled = money < price;
-  add.onclick = () => aqBuy(price, () => { s.tanks.push({water: sel.value, size: 0, filter: false, feeder: false, decor: [], food: 100, dirt: 0, fish: []}); aq.tank = s.tanks.length - 1; });
+  add.onclick = () => aqBuy(price, () => { s.tanks.push(aqNewTank(sel.value)); aq.tank = s.tanks.length - 1; });
   nb.append(sel, add); shop.append(nb);
-  $('aqPanel').replaceChildren(inTank, pool, shop);
+  // the challenges, three at a time
+  const goals = el('div', 'sysCard px aqCol'); goals.append(el('b', '', 'Défis'));
+  for (const [id, text, fn, reward] of aqGoals(s)) {
+    const [cur, need] = fn(s), ok = cur >= need, row = el('div', 'aqGoal'), bar = el('div', 'aqBar'), fill = el('i');
+    fill.style.width = Math.min(100, cur / need * 100) + '%'; bar.append(fill);
+    const claim = el('button', 'btn px' + (ok ? ' main' : ''), ok ? 'RÉCLAMER +' + reward : Math.min(cur, need) + ' / ' + need); claim.disabled = !ok;
+    claim.onclick = () => { s.goals[id] = 1; fiSave().money += reward; saveGames(); sfx('notify'); toast('Défi réussi : +' + reward + ' pièces'); aqUi(); };
+    row.append(el('span', '', text), bar, claim); goals.append(row);
+  }
+  if (!aqGoals(s).length) goals.append(el('small', 'hint', 'Tous les défis sont réussis. Bravo !'));
+  aq.goalsSeen = aqGoalKey(s);
+  // the log of the species of this water
+  const all = aqWaterFish(tank.water), have = aqDexOf(s, tank.water), dex = el('div', 'sysCard px aqCol');
+  dex.append(el('b', '', 'Carnet · ' + AQA.waters[tank.water][0] + ' · ' + have + ' / ' + all.length), el('small', 'hint', 'Chaque espèce mise dans un bassin y entre. Au quart : des pièces ; à la moitié : un décor unique ; complet : un gros gain.'));
+  const grid = el('div', 'aqDex');
+  for (const f of all) { const img = el('img'); img.src = fiArtUrl(f, !s.dex[f.id], 2); img.title = s.dex[f.id] ? f.name + ' · ' + FI_RARITY[f.rarity][0] : '?'; grid.append(img); }
+  dex.append(grid);
+  $('aqPanel').replaceChildren(inTank, pool, shop, goals, dex);
 }
-$('aqTank').onchange = () => { aq.tank = +$('aqTank').value; aq.sel = null; aqUi(); $('aqTank').blur(); };
-$('aqFeed').onclick = () => { const t = aqTank(); t.food = 100; for (let i = 0; i < 14; i++) aq.flakes.push({x: 40 + Math.random() * (AQA.W - 80), y: 18 + Math.random() * 8, t: 0}); saveGames(); aqUi(true); $('aqFeed').blur(); };
+$('aqTank').onchange = () => { aq.tank = +$('aqTank').value; aq.sel = null; aq.vis = []; aq.tips = []; aqUi(); $('aqTank').blur(); };
+$('aqFeed').onclick = () => { const t = aqTank(); t.food = 100; for (let i = 0; i < 16; i++) aq.flakes.push({x: AQA.GL + 40 + Math.random() * (AQA.GR - AQA.GL - 80), y: AQA.TOP + 2 + Math.random() * 8, t: 0}); saveGames(); aqUi(true); $('aqFeed').blur(); };
 $('aqClean').onclick = () => { aqTank().dirt = 0; sfx('click'); saveGames(); aqUi(true); $('aqClean').blur(); };
-$('aqCash').onclick = () => { const s = aqSave(), n = Math.floor(s.cash); if (!n) return; s.cash -= n; s.earned += n; fiSave().money += n; saveGames(); sfx('notify'); toast('+' + n + ' pièces pour la Pêche'); aqUi(); $('aqCash').blur(); };
-$('aqCanvas').onpointerdown = e => {
-  const r = $('aqCanvas').getBoundingClientRect(), x = (e.clientX - r.left) * AQA.W / r.width, y = (e.clientY - r.top) * AQA.H / r.height;
-  const f = aqTank().fish.find(f => { const sw = aq.swim[f.k]; return sw && Math.abs(sw.x - x) < 22 && Math.abs(sw.y - y) < 14; });
-  aq.sel = f ? f.k : null; if (f) toast(aqFishName(f) + ' · ' + FI_RARITY[aqFish(f).rarity][0] + ' · de : ' + [...aqFish(f).spots].map(p => FI_SPOTS[p].name).join(', ')); aqUi();
-};
-{  // self-check: a fed, clean, decorated tank is happy; 10 hours away make it hungry and dirty; an eel lives in fresh and sea water, not in the abyss
-  const t = {water: 'douce', size: 0, filter: false, feeder: false, decor: ['plante', 'rocher'], food: 100, dirt: 0, fish: []}, eel = {id: FISH.findIndex(f => f.name === 'Anguille'), cm: 80, k: 0};
+$('aqCash').onclick = () => { aqCash(); $('aqCash').blur(); };
+{ const cv = $('aqCanvas'), at = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * AQA.W / r.width, (e.clientY - r.top) * AQA.H / r.height]; };
+  cv.onpointerdown = e => {
+    const [x, y] = at(e), tank = aqTank();
+    const c = aq.tips.find(c => Math.abs(c.x - x) < 9 && Math.abs(c.y + 2 - y) < 9);
+    if (c) { const v = aqTip(), s = aqSave(); aq.tips.splice(aq.tips.indexOf(c), 1); s.cash += v; s.tips++; aq.pops.push({x: c.x, y: c.y - 4, text: '+' + v, t: 0}); sfx('click'); aqUi(true); return; }
+    if (x >= AQA.W - 36 && y >= AQA.H - 30) return aqCash();
+    const d = [...tank.decor].reverse().find(d => { const [w, h] = AQ_DECOR[d.k]; return x >= d.x - 2 && x <= d.x + w + 2 && y >= AQB() - h - 2 && y <= AQB() + 4; });
+    if (d) { aq.drag = {d, dx: x - d.x, moved: false}; try { cv.setPointerCapture(e.pointerId); } catch {} return; }
+    const f = tank.fish.find(f => { const sw = aq.swim[f.k]; return sw && Math.abs(sw.x - x) < 22 && Math.abs(sw.y - y) < 14; });
+    aq.sel = f ? f.k : null; if (f) toast(aqFishName(f) + ' · ' + FI_RARITY[aqFish(f).rarity][0] + ' · de : ' + [...aqFish(f).spots].map(p => FI_SPOTS[p].name).join(', ')); aqUi();
+  };
+  cv.onpointermove = e => { if (!aq?.drag) return; const [x] = at(e), {d} = aq.drag; d.x = Math.max(AQA.GL, Math.min(AQA.GR - AQ_DECOR[d.k][0], Math.round(x - aq.drag.dx))); aq.drag.moved = true; };
+  cv.onpointerup = cv.onpointercancel = () => { if (aq?.drag?.moved) saveGames(); if (aq) aq.drag = null; };
+  cv.__aq = {save: aqSave, fish: fiSave, FISH, newTank: aqNewTank, st: () => aq, step: aqStep, stars: aqStars, ui: aqUi, put: aqPut, spawn: aqSpawn, fit: aqFits, need: aqNeedSize};  // pour le test
+}
+{  // self-check: needs and stars of a tank, growth, young (of a rare colour when the dice say so), the log and its rewards
+  const t = {water: 'douce', size: 0, filter: false, feeder: false, decor: [{k: 'plante', x: 20}, {k: 'rocher', x: 80}], food: 100, dirt: 0, fish: []}, eelId = FISH.findIndex(f => f.name === 'Anguille'), eel = {id: eelId, cm: 80, k: 0};
   console.assert(aqHappy(t) === 95 && aqFits(eel, t) && aqFits(eel, {water: 'mer'}) && !aqFits(eel, {water: 'abysses'}) && aqNeedSize(eel) === 1, 'aquarium needs');
-}  // (non indenté : les textes sur plusieurs lignes restent exactement les tiens)
+  const sp = FISH.find(f => aqWaterFish('douce').includes(f) && f.max <= 60), s = {tanks: [t], cash: 0, visitors: 0, seq: 10, dex: {}, dexT: {}, unlock: {}, news: [], births: 0};
+  t.fish.push({id: sp.id, cm: sp.max, k: 1}, {id: sp.id, cm: sp.max, k: 2}, {id: sp.id, cm: sp.min, k: 3});
+  t.feeder = true; aqStep(s, 3, () => 0);
+  const baby = t.fish.find(f => f.born), grown = t.fish.find(f => f.k === 3);
+  console.assert(baby && baby.v === 1 && s.births >= 1 && s.dex[sp.id] && grown.cm > sp.min && s.cash > 0 && aqStars(t) >= 1, 'aquarium: growth, young, log', baby, grown, s);
+  const all = aqWaterFish('mer'), s2 = {dex: {}, dexT: {}, unlock: {}, news: []}; for (const f of all) aqDexAdd(s2, {id: f.id});
+  console.assert(s2.dexT.mer === 3 && s2.unlock.phare, 'aquarium: log rewards', s2.dexT);
+  view.dataset.selfcheck = baby && s.dex[sp.id] && s2.unlock.phare && aqHappy({...t, fish: [], decor: t.decor, food: 100, dirt: 0}) === 95 ? 'ok' : 'aquarium : vérification ratée';
+}
   // ---- fin ----
   ctx.onOpen(() => { (async () => { const d = await gf.read('games').catch(() => null); if (d) { for (const k of Object.keys(games)) delete games[k]; Object.assign(games, { best: {}, ...d }); } aqOpen(); })(); });
 }

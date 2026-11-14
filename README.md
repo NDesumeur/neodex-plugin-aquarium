@@ -9,7 +9,14 @@ Un jeu de gestion tranquille qui prolonge la **Pêche** : les poissons que tu at
 1. **Le vivier** : chaque poisson pêché dans la Pêche y arrive vivant (60 au plus). À ta première visite, il reçoit un poisson de chaque espèce déjà dans ta collection.
 2. **Les bassins** : choisis un poisson dans le vivier et clique sur **Mettre** pour le placer dans le bassin affiché. Il faut la bonne eau : douce (étang, rivière, lac), mer, tropicale, polaire ou abysses, selon l'endroit où l'espèce vit. Les poissons de plus de 60 cm demandent un bassin moyen, ceux de plus de 120 cm un grand.
 3. **Les soins** : les poissons ont faim et l'eau se salit, **même quand NeoDex est fermé**. Trois jauges en haut du bassin les montrent : **Faim**, **Sale** et **Joie**. Le bouton **Nourrir** fait tomber de la nourriture que les poissons vont chercher, **Nettoyer** rend l'eau claire (sinon elle verdit).
-4. **Les visiteurs** : des poissons heureux attirent du monde. Leurs pièces s'accumulent dans la caisse ; clique sur **Encaisser** pour les verser dans ta bourse de la Pêche. À ton retour, le jeu dit ce que les visiteurs ont laissé pendant ton absence.
+4. **Les visiteurs** : des poissons heureux attirent du monde. Tu les vois passer devant la vitre, s'arrêter devant les plus beaux poissons et craquer (un petit cœur). Parfois, ils laissent tomber un **pourboire** par terre : clique dessus avant qu'il disparaisse. Leurs pièces s'accumulent dans le bocal ; clique sur le bocal ou sur **Encaisser** pour les verser dans ta bourse de la Pêche. À ton retour, le jeu dit ce que les visiteurs ont laissé pendant ton absence.
+5. **Des poissons vivants** : bien nourris, les poissons **grandissent** (une vingtaine de jours du plus petit au plus grand, tant que le bassin le permet). Deux adultes de la même espèce dans un bassin heureux ont des **petits**, parfois d'une **couleur rare** qui vaut trois fois plus. Les gros poissons sont dessinés plus grands.
+
+## Carnet, défis et étoiles
+
+- **Le carnet** : chaque espèce mise dans un bassin entre au carnet de son eau, avec des pièces la première fois. Au quart d'une eau : des pièces ; à la moitié : un **décor unique** (vieille souche, petit phare, statue tiki, igloo, cheminée des abysses) ; complet : un gros gain.
+- **Les défis** : trois à la fois, de « 3 poissons dans un bassin » jusqu'à « un bassin de chaque eau ». Chaque défi réussi se réclame contre des pièces.
+- **Les étoiles** : chaque bassin gagne jusqu'à **3 étoiles** (heureux, bien rempli, varié, décoré, et un poisson rare pour la troisième). Chaque étoile ajoute 15 % à ce qu'il rapporte.
 
 ## Le bonheur des poissons
 
@@ -22,7 +29,7 @@ Tout se paie avec les pièces de la Pêche :
 - **Agrandir** un bassin : petit (6 places), moyen (10 places, 900 pièces), grand (16 places, 3 500 pièces).
 - **Filtre** (600 pièces) : l'eau se salit trois fois moins vite.
 - **Distributeur** (1 200 pièces) : nourrit le bassin tout seul.
-- **Décors** : plante, rocher, corail, château, coffre ou épave, quatre au plus par bassin.
+- **Décors** : plante, rocher, corail, amphore, château, arche de pierre, coffre, bulleur ou épave, six au plus par bassin (quatre comptent pour la joie). **Fais-les glisser** sur le sable pour les placer.
 - **Nouveau bassin** : choisis son type d'eau ; chaque bassin supplémentaire coûte plus cher que le précédent.
 
 Un poisson en trop peut être **relâché** : il rapporte la moitié de sa valeur. Clique sur un poisson dans le bassin pour voir son nom.

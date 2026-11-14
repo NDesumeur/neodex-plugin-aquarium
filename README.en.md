@@ -9,7 +9,14 @@ A relaxed management game that extends **Pêche** (Fishing): the fish you catch 
 1. **The holding pen**: every fish caught in Fishing arrives there alive (60 at most). On your first visit it receives one fish of every species already in your collection.
 2. **Tanks**: pick a fish in the pen and click **Put** to place it in the tank on screen. It needs the right water: fresh (pond, river, lake), sea, tropical, polar or abyss, depending on where the species lives. Fish over 60 cm need a medium tank, those over 120 cm a large one.
 3. **Care**: fish get hungry and the water gets dirty, **even while NeoDex is closed**. Three gauges at the top of the tank show it: **Hunger**, **Dirty** and **Joy**. **Feed** drops food that the fish swim to, **Clean** clears the water (otherwise it turns green).
-4. **Visitors**: happy fish draw a crowd. Their coins pile up in the till; click **Collect** to move them into your Fishing purse. When you come back, the game tells you what visitors left while you were away.
+4. **Visitors**: happy fish draw a crowd. You see them walk past the glass, stop in front of the finest fish and love them (a heart). Sometimes they drop a **tip** on the floor: click it before it vanishes. Their coins pile up in the jar; click the jar or **Collect** to move them into your Fishing purse. When you come back, the game tells you what visitors left while you were away.
+5. **Living fish**: well-fed fish **grow** (about 20 days from smallest to biggest, as far as the tank allows). Two adults of the same species in a happy tank have **young**, sometimes of a **rare colour** worth three times more. Big fish are drawn bigger.
+
+## Log, challenges and stars
+
+- **The log**: every species put in a tank enters the log of its water, with coins the first time. A quarter of a water: coins; half: a **unique decoration** (old stump, little lighthouse, tiki statue, igloo, abyssal vent); complete: a big reward.
+- **Challenges**: three at a time, from putting 3 fish in a tank to opening a tank of every water. Each one done is claimed for coins.
+- **Stars**: each tank earns up to **3 stars** (happy, well filled, varied, decorated, a rare fish for the third). Each star adds 15 % to its income.
 
 ## Fish happiness
 
@@ -22,7 +29,7 @@ Everything is paid with Fishing coins:
 - **Enlarge** a tank: small (6 places), medium (10 places, 900 coins), large (16 places, 3,500 coins).
 - **Filter** (600 coins): the water gets dirty three times more slowly.
 - **Feeder** (1,200 coins): feeds the tank by itself.
-- **Decorations**: plant, rock, coral, castle, chest or wreck, four at most per tank.
+- **Decorations**: plant, rock, coral, amphora, castle, stone arch, chest, bubbler or wreck, six at most per tank (four count for joy). **Drag them** along the sand to place them.
 - **New tank**: choose its type of water; each extra tank costs more than the previous one.
 
 A fish you have no room for can be **released**: it gives back half its value. Click a fish in the tank to see its name.

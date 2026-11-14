@@ -1,16 +1,19 @@
 {
   "id": "neodex.aquarium",
   "name": "Aquarium",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "author": "NDesumeur",
-  "description": "Jeu de gestion qui prolonge la Pêche : chaque poisson attrapé arrive vivant dans ton vivier. Installe-le dans un bassin de la bonne eau (douce, mer, tropicale, polaire, abysses), nourris-le et nettoie l'eau, même pendant ton absence. Les poissons heureux attirent des visiteurs dont les pièces paient bassins, filtres, distributeurs et décors.",
+  "description": "Jeu de gestion qui prolonge la Pêche : chaque poisson attrapé arrive vivant dans ton vivier. Installe-le dans un bassin de la bonne eau (douce, mer, tropicale, polaire, abysses), nourris-le, nettoie l'eau et décore. Les poissons heureux grandissent, ont des petits (parfois d'une couleur rare) et attirent des visiteurs qui laissent des pourboires. Carnet des espèces, défis et bassins notés jusqu'à 3 étoiles.",
   "icon": "icon.png",
   "entry": "index.js",
   "view": "aquarium",
   "neobase": ">=4.0.0",
   "type": "app",
   "category": "Jeux",
-  "compatibility": ["windows", "linux"],
+  "compatibility": [
+    "windows",
+    "linux"
+  ],
   "syncMode": "progression",
   "syncInfo": "Ton aquarium, poissons, pièces.",
   "mobile": false,
