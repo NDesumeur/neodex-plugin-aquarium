@@ -1,7 +1,7 @@
 {
   "id": "neodex.aquarium",
   "name": "Aquarium",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "author": "NDesumeur",
   "description": "Jeu de gestion qui prolonge la Pêche : chaque poisson attrapé arrive vivant dans ton vivier. Installe-le dans un bassin de la bonne eau (douce, mer, tropicale, polaire, abysses), nourris-le, nettoie l'eau et décore. Les poissons heureux grandissent, ont des petits (parfois d'une couleur rare) et attirent des visiteurs qui laissent des pourboires. Carnet des espèces, défis et bassins notés jusqu'à 3 étoiles.",
   "icon": "icon.png",
