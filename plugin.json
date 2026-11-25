@@ -1,7 +1,7 @@
 {
   "id": "neodex.aquarium",
   "name": "Aquarium",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "author": "NDesumeur",
   "description": "Jeu de gestion qui prolonge la Pêche : chaque poisson attrapé arrive vivant dans ton vivier. Installe-le dans un bassin de la bonne eau, choisis sa forme (arrondi, colonne, panoramique), plante des plantes vivantes qui poussent et nettoient l'eau, et surveille l'écosystème : les grands chasseurs mangent les petits poissons, d'autres grignotent les plantes ou nettoient le fond. Les visiteurs ont leurs goûts (l'enfant veut des poissons colorés, le savant des espèces rares, le photographe des géants, le rêveur des bassins pleins de plantes). Un musée à ouvrir salle par salle en donnant une espèce après l'autre, et ton plus beau bassin peut devenir le fond d'écran de NeoDex avec le thème Aquarium. Carnet des espèces, naissances, défis et bassins notés jusqu'à 3 étoiles.",
   "icon": "icon.png",
@@ -24,5 +24,62 @@
   "sdk": "2.1.0",
   "permissions": [
     "storage"
+  ],
+  "succes": [
+    {
+      "id": "premier",
+      "nom": "Premier locataire",
+      "texte": "Mettre un premier poisson dans un bassin"
+    },
+    {
+      "id": "etoile3",
+      "nom": "Bassin trois étoiles",
+      "texte": "Avoir un bassin à 3 étoiles"
+    },
+    {
+      "id": "naissance",
+      "nom": "Heureux événement",
+      "texte": "Avoir une naissance dans un bassin"
+    },
+    {
+      "id": "eaux",
+      "nom": "Toutes les eaux",
+      "texte": "Ouvrir un bassin de chaque eau"
+    },
+    {
+      "id": "visiteurs",
+      "nom": "Foule des grands jours",
+      "texte": "Accueillir 1 000 visiteurs"
+    },
+    {
+      "id": "musee",
+      "nom": "Généreux donateur",
+      "texte": "Donner 10 poissons au musée"
+    },
+    {
+      "id": "legendes",
+      "nom": "La salle des légendes",
+      "texte": "Ouvrir la salle des légendes du musée"
+    },
+    {
+      "id": "defis",
+      "nom": "Tous les défis",
+      "texte": "Réussir les 18 défis de l'aquarium",
+      "cache": true
+    }
+  ],
+  "records": [
+    {
+      "id": "especes",
+      "nom": "Espèces au carnet",
+      "sens": "haut",
+      "format": "nombre"
+    },
+    {
+      "id": "visiteurs",
+      "nom": "Visiteurs",
+      "sens": "haut",
+      "format": "nombre"
+    }
   ]
 }

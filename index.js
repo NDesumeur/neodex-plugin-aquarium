@@ -48,6 +48,9 @@ export default async function (ctx) {
   const saveGames = () => { clearTimeout(gamesTimer); gamesTimer = setTimeout(() => { gamesTimer = null; gf.write('games', games).catch(() => {}); }, 500); };
   const best = (k, v, higher = true) => { const b = games.best[k]; if (b == null || (higher ? v > b : v < b)) { games.best[k] = v; saveGames(); return true; } return false; };
   const gstore = (k, init) => (games[k] ??= init);  // la section d'un jeu
+  // les trophées de NeoDex (3.4.8 et plus) : succès et records déclarés dans plugin.json ; sur un NeoDex plus ancien, rien ne se passe
+  const trophy = id => { ctx.games?.unlock(id).catch(() => {}); };
+  const trophyRecord = (id, v) => { if (v != null && Number.isFinite(+v)) ctx.games?.record(id, +v).catch(() => {}); };
 function gameLoop(st, appKey, update, draw) {
   cancelAnimationFrame(st.raf);
   const STEP = 1000 / 60; let acc = 0, last = performance.now();
@@ -861,6 +864,7 @@ function aqPut(f) {  // from the pool to the tank shown
 }
 function aqCash() { const s = aqSave(), n = Math.floor(s.cash); if (!n) return; s.cash -= n; s.earned += n; fiSave().money += n; saveGames(); sfx('notify'); toast('+' + n + ' pièces pour la Pêche'); aqUi(); }
 function aqUi(soft) {
+  setTimeout(aqTrophies);
   const s = aqSave(), tank = aqTank(), money = fiSave().money;
   $('aqInfo').textContent = money + ' pièces (Pêche) · caisse ' + Math.floor(s.cash) + ' · ' + s.tanks.reduce((a, t) => a + aqIncome(t), 0).toFixed(1).replace('.', ',') + ' pièces / h · ' + s.tanks.reduce((a, t) => a + t.fish.length, 0) + ' poissons · ' + Math.floor(s.visitors) + ' visiteurs';
   $('aqCash').textContent = 'ENCAISSER ' + Math.floor(s.cash);
@@ -964,5 +968,15 @@ $('aqCash').onclick = () => { aqCash(); $('aqCash').blur(); };
   view.dataset.selfcheck = eco && baby && s.dex[sp.id] && s2.unlock.phare && aqHappy({...t, fish: [], decor: t.decor, food: 100, dirt: 0}) === 95 ? 'ok' : 'aquarium : vérification ratée';
 }
   // ---- fin ----
+  // les trophées, tirés des statistiques et des records gardés (aussi à l'ouverture : ce qui a été fait avant compte)
+  function aqTrophies() {
+    if (!games) return;
+    const s = aqSave(), dex = Object.keys(s.dex || {}).length, vis = Math.floor(s.visitors), mus = Object.keys(s.museum || {}).length, fish = s.tanks.reduce((a, t) => a + t.fish.length, 0);
+    const goals = AQ_GOALS.filter(([id]) => s.goals?.[id]).length, stars = Math.max(0, ...s.tanks.map(aqStars)), waters = new Set(s.tanks.map(t => t.water)).size;
+    const sig = [dex, vis, mus, fish, goals, stars, waters, s.births].join(); if (sig === aqTrophies.sig) return; aqTrophies.sig = sig;
+    trophyRecord('especes', dex || null); trophyRecord('visiteurs', vis || null);
+    if (fish >= 1) trophy('premier'); if (stars >= 3) trophy('etoile3'); if (s.births >= 1) trophy('naissance'); if (waters >= 5) trophy('eaux');
+    if (vis >= 1000) trophy('visiteurs'); if (mus >= 10) trophy('musee'); if (s.museum && aqRoomsOpen(s).includes(5)) trophy('legendes'); if (goals >= AQ_GOALS.length) trophy('defis');
+  }
   ctx.onOpen(() => { (async () => { const d = await gf.read('games').catch(() => null); if (d) { for (const k of Object.keys(games)) delete games[k]; Object.assign(games, { best: {}, ...d }); } aqOpen(); })(); });
 }
